@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const url = require('url');
+const path = require('path');
 
 function createServer() {
   return http.createServer((req, res) => {
@@ -29,6 +30,15 @@ function createServer() {
       pathname === '/file' || pathname === '/file/'
         ? 'index.html'
         : pathname.slice('/file/'.length);
+
+    const resolvedPath = path.resolve('./public', fileName);
+
+    if (!resolvedPath.startsWith(path.resolve('./public'))) {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'text/plain');
+
+      return res.end('404 Not Found');
+    }
 
     fs.readFile(`./public/${fileName}`, (err, data) => {
       if (err) {
