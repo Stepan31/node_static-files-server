@@ -1,42 +1,46 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
 const http = require('http');
+const fs = require('fs');
+const url = require('url');
 
 function createServer() {
   return http.createServer((req, res) => {
-    const { pathname } = new URL(`http://${req.headers.host}${req.url}`);
-    const requestedPath =
-      pathname.replace('/file', '').slice(1) || 'index.html';
-    const realPath = path.join(__dirname, '..', 'public', requestedPath);
+    const normalizedUrl = new url.URL(req.url, `http://${req.headers.host}`);
+    const pathname = normalizedUrl.pathname;
 
-    if (pathname === '/file') {
-      res.statusCode = 200;
+    if (pathname.includes('//')) {
+      res.statusCode = 404;
       res.setHeader('Content-Type', 'text/plain');
-      res.end('To load files, use the /file/ path');
 
-      return;
+      return res.end('404 Not Found');
     }
 
-    if (!pathname.startsWith('/file/')) {
+    if (!pathname.startsWith('/file')) {
       res.setHeader('Content-Type', 'text/plain');
       res.statusCode = 400;
-      res.end('To load files, use the /file/ path');
 
-      return;
+      return res.end(
+        JSON.stringify('Invalid URL. To load files, use /file/<file_path>'),
+      );
     }
 
-    fs.readFile(realPath, (err, data) => {
-      if (!err) {
-        res.statusCode = 200;
-        res.end(data);
+    const fileName =
+      pathname === '/file' || pathname === '/file/'
+        ? 'index.html'
+        : pathname.slice('/file/'.length);
 
-        return;
+    fs.readFile(`./public/${fileName}`, (err, data) => {
+      if (err) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/plain');
+
+        return res.end('404 Not Found');
       }
+
+      res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain');
-      res.statusCode = 404;
-      res.end('File not found');
+      res.end(data);
     });
   });
 }
